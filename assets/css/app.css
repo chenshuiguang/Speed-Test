@@ -380,3 +380,55 @@ color: #14b0fe;
     display: none;
   }
 }
+
+/* Force desktop layout on all devices and orientations */
+.Mobile {
+  visibility: hidden !important;
+  display: none !important;
+}
+.Desktop {
+  visibility: visible !important;
+}
+
+/* Enlarge desktop UI on small screens (phones) */
+@media only screen and (max-width: 600px) {
+  .openSpeedtestApp {
+    overflow: auto;
+    min-height: 100vh;
+  }
+  .Desktop {
+    transform: translateY(-30vh) scale(1.5);
+    transform-origin: top center;
+    width: calc(100vw / 1.5);
+    height: auto;
+  }
+}
+
+/* Desktop-only tuning: enlarge and lift center up/down icons */
+@media only screen and (min-width: 601px) {
+  #downSymbolDesk,
+  #upSymbolDesk {
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: translateY(-60px) scale(1);
+  }
+}
+
+/* Mobile-only tuning: scale icons */
+@media only screen and (max-width: 600px) {
+  /* Desk icons need -70px because they moved up 50px in SVG (orig -120px) */
+  #downSymbolDesk,
+  #upSymbolDesk {
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: translateY(-70px) scale(1);
+  }
+
+  /* Mob icons kept original logic (-120px) */
+  #downSymbolMob,
+  #upSymbolMob {
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: translateY(-120px) scale(1);
+  }
+}

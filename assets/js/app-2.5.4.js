@@ -97,6 +97,9 @@ window.onload = function() {
     this.graphMob2 = _("graphMob2");
     this.graphMob1 = _("graphMob1");
     this.text = _("text");
+    this.downData = _("downData");
+    this.upData = _("upData");
+    this.userIp = _("userIp");
     this.scale = [{degree:680, value:0}, {degree:570, value:0.5}, {degree:460, value:1}, {degree:337, value:10}, {degree:220, value:100}, {degree:115, value:500}, {degree:0, value:1000},];
     this.element = "";
     this.chart = "";
@@ -139,6 +142,52 @@ window.onload = function() {
   };
   openSpeedtestShow.prototype.app = function() {
     this.loader.fade("out", 500, this.ShowAppIntro());
+    
+    // Fetch and display user IP (Local/Server-side)
+    var self = this;
+
+    function updateIp(ip) {
+      if (self.userIp && self.userIp.el) {
+        self.userIp.el.textContent = ip;
+      }
+    }
+
+    function fetchIp(url, fallback) {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", url, true);
+      xhr.timeout = 5000;
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState == 4) {
+          if (xhr.status == 200) {
+            updateIp(xhr.responseText.trim());
+          } else {
+            if (fallback) {
+              fallback();
+            } else {
+              updateIp("IP Error");
+            }
+          }
+        }
+      };
+      xhr.onerror = function() { 
+        if (fallback) fallback(); 
+        else updateIp("IP Error"); 
+      };
+      xhr.ontimeout = function() { 
+        if (fallback) fallback(); 
+        else updateIp("IP Error"); 
+      };
+      xhr.send();
+    }
+
+    // Try standard OpenSpeedTest endpoints
+    fetchIp("/getIP", function() {
+      fetchIp("getIP.php", function() {
+          // If both fail, try just using location.hostname as a last resort placeholder?
+          // No, that's server IP. Just show error.
+          updateIp("IP Error");
+      });
+    });
   };
   openSpeedtestShow.prototype.ShowAppIntro = function() {
     this.OpenSpeedtest.fade("in", 1000);
@@ -189,13 +238,13 @@ window.onload = function() {
     if (select === 0) {
       var Graphelement = this.graphc1.el;
       Remove = "line";
-      this.graphMob2.el.style.display = "none";
-      this.graphMob1.el.style.display = "block";
+      if (this.graphMob1 && this.graphMob1.el) this.graphMob1.el.style.display = "block";
+      if (this.graphMob2 && this.graphMob2.el) this.graphMob2.el.style.display = "block";
     } else {
       Graphelement = this.graphc2.el;
       Remove = "line2";
-      this.graphMob1.el.style.display = "none";
-      this.graphMob2.el.style.display = "block";
+      if (this.graphMob1 && this.graphMob1.el) this.graphMob1.el.style.display = "block";
+      if (this.graphMob2 && this.graphMob2.el) this.graphMob2.el.style.display = "block";
     }
     if (!isNaN(speed)) {
       this.values.push(speed);
@@ -381,6 +430,22 @@ window.onload = function() {
         this.jitterDesk.el.textContent = ShowData;
         this.JitterResultMon.el.textContent = ShowData;
       }
+    }
+  };
+  openSpeedtestShow.prototype.dataUsage = function(bytes, dir) {
+    var mb = bytes / 1048576;
+    var txt;
+    if (mb >= 100) {
+      txt = mb.toFixed(1) + " MB";
+    } else if (mb >= 1) {
+      txt = mb.toFixed(2) + " MB";
+    } else {
+      txt = (mb * 1024).toFixed(0) + " KB";
+    }
+    if (dir === "dl") {
+      this.downData.el.textContent = txt;
+    } else if (dir === "up") {
+      this.upData.el.textContent = txt;
     }
   };
   openSpeedtestShow.prototype.LiveSpeed = function(data, Display) {
@@ -741,14 +806,17 @@ window.onload = function() {
     var OpenSpeedTestRunR = parseInt(getCommand.r);
     var OpenSpeedTestStart;
     if (enableRun) {
-      if (typeof getCommand.run === "string" || typeof getCommand.r === "string") {
+      var hasRunParam = (typeof getCommand.run === "string" || typeof getCommand.r === "string");
+      if (hasRunParam) {
         if (OpenSpeedTestRun > 0) {
           OpenSpeedTestStart = OpenSpeedTestRun;
         } else if (OpenSpeedTestRunR > 0) {
           OpenSpeedTestStart = OpenSpeedTestRunR;
         } else {
-          OpenSpeedTestStart = 0;
+          OpenSpeedTestStart = undefined;
         }
+      } else {
+        OpenSpeedTestStart = 0;
       }
     }
     if (OpenSpeedTestStart >= 0) {
@@ -932,6 +1000,7 @@ window.onload = function() {
           Show.mainGaugeProgress(currentSpeed);
           Show.LiveSpeed(currentSpeed);
           Show.Graph(currentSpeed, 0);
+          Show.dataUsage(dLoaded, "dl");
           downloadSpeed = Get.AvgSpeed(currentSpeed, dlFinal, dlDuration);
           if (downloadTimeing >= dlDuration && ProG == "done") {
             if (SelectTest) {
@@ -979,6 +1048,7 @@ window.onload = function() {
           Show.mainGaugeProgress(currentSpeed);
           Show.LiveSpeed(currentSpeed);
           Show.Graph(currentSpeed, 1);
+          Show.dataUsage(uLoaded, "up");
           uploadSpeed = Get.AvgSpeed(currentSpeed, ulFinal, ulDuration);
           if (uploadTimeing >= ulDuration && stop == 1) {
             dataUsedforul = uLoaded;
@@ -1007,23 +1077,20 @@ window.onload = function() {
         if (Status === "SendR") {
           Show.showStatus("All done");
           var dummyElement = document.createElement("div");
-          dummyElement.innerHTML = '<a xlink:href="https://openspeedtest.com?ref=Self-Hosted-Outro&run=5" style="cursor: pointer" target="_blank"></a>';
+          var currentURL = window.location.href;
+          dummyElement.innerHTML = '<a xlink:href="' + currentURL + '" style="cursor: pointer"></a>';
           var htmlAnchorElement = dummyElement.querySelector("a");
           Show.oDoLiveSpeed.el.textContent = ost;
           var circleSVG = document.getElementById("oDoLiveSpeed");
           htmlAnchorElement.innerHTML = circleSVG.innerHTML;
           circleSVG.innerHTML = dummyElement.innerHTML;
-          if (location.hostname != myname.toLowerCase() + com) {
+          var circleSVG2 = document.getElementById("resultsData");
+          circleSVG2.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", currentURL);
+          circleSVG2.removeAttribute("target");
+          if (saveData) {
             saveTestData = "https://" + myname.toLowerCase() + com + "/results/show.php?" + "&d=" + downloadSpeed.toFixed(3) + "&u=" + uploadSpeed.toFixed(3) + "&p=" + pingEstimate + "&j=" + jitterEstimate + "&dd=" + (dataUsedfordl / 1048576).toFixed(3) + "&ud=" + (dataUsedforul / 1048576).toFixed(3) + "&ua=" + userAgentString;
             saveTestData = encodeURI(saveTestData);
-            var circleSVG2 = document.getElementById("resultsData");
-            circleSVG2.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", saveTestData);
-            circleSVG2.setAttribute("target", "_blank");
-            if (saveData) {
-              ServerConnect(5);
-            }
-          } else {
-            ServerConnect(3);
+            ServerConnect(5);
           }
           Status = "busy";
           clearInterval(Engine);
