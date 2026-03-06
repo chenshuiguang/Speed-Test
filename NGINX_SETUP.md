@@ -17,6 +17,44 @@
     }
 ```
 
+完整代码如下：
+
+
+```server {
+    listen 10000 ; 
+    server_name x.x.x.x 
+    index index.php index.html index.htm default.php default.htm default.html; 
+    root /www/sites/openspeedtest/index; 
+    access_log /www/sites/openspeedtest/log/access.log main; 
+    error_log /www/sites/openspeedtest/log/error.log; 
+    # 允许上传大于35M的测试数据，必须设置
+    client_max_body_size 35M; 
+    # 增加超时时间，防止测速中断
+    proxy_read_timeout 60s; 
+    proxy_send_timeout 60s; 
+    # === 新增：用于获取客户端IP ===
+    location /getIP {
+        default_type text/plain; 
+        return 200 $remote_addr; 
+    }
+    # 处理特定文件的访问控制
+    location ~ ^/(\.user.ini|\.htaccess|\.git|\.env|\.svn|\.project|LICENSE|README.md) {
+        return 404; 
+    }
+    # SSL 证书申请验证路径
+    location ^~ /.well-known/acme-challenge {
+        allow all; 
+        root /usr/share/nginx/html; 
+    }
+    # 禁止访问敏感文件类型
+    if ( $uri ~ "^/\.well-known/.*\.(php|jsp|py|js|css|lua|ts|go|zip|tar\.gz|rar|7z|sql|bak)$" ) {
+        return 403; 
+    }
+    error_page 404 /404.html; 
+}
+```
+
+
 5. 点击 **保存** 并 **重载** Nginx 配置。
 6. 回到测速页面刷新，现在应该能正确显示访问者的 IP 了（无论是内网还是公网 IP）。
 
